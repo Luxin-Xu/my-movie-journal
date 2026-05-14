@@ -88,12 +88,20 @@ export default function Home() {
             </span>
           </Link>
 
-          <Link
-            href="/add"
-            className="inline-flex h-11 items-center justify-center rounded-full bg-[#00e054] px-5 text-sm font-semibold text-black shadow-[0_12px_32px_rgba(0,224,84,0.24)] transition hover:bg-[#20ff73] focus:outline-none focus:ring-2 focus:ring-[#00e054] focus:ring-offset-2 focus:ring-offset-black"
-          >
-            Add Movie
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/movies"
+              className="inline-flex h-11 items-center justify-center rounded-full border border-white/15 px-5 text-sm font-semibold text-zinc-100 transition hover:border-white/30 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-black"
+            >
+              View All Movies
+            </Link>
+            <Link
+              href="/add"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-[#00e054] px-5 text-sm font-semibold text-black shadow-[0_12px_32px_rgba(0,224,84,0.24)] transition hover:bg-[#20ff73] focus:outline-none focus:ring-2 focus:ring-[#00e054] focus:ring-offset-2 focus:ring-offset-black"
+            >
+              Add Movie
+            </Link>
+          </div>
         </header>
 
         <section className="grid gap-8 lg:grid-cols-[1fr_340px] lg:items-end">

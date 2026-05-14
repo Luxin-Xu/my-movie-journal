@@ -1,58 +1,61 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
 
 const fakeResults = [
   {
-    id: 1,
+    tmdbId: "666277",
     title: "Past Lives",
+    releaseDate: "2023-06-02",
     year: "2023",
     genres: ["Drama", "Romance"],
+    posterPath: "/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
     palette: "from-emerald-300 via-cyan-700 to-slate-950",
   },
   {
-    id: 2,
+    tmdbId: "693134",
     title: "Dune: Part Two",
+    releaseDate: "2024-03-01",
     year: "2024",
     genres: ["Sci-Fi", "Adventure"],
+    posterPath: "/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg",
     palette: "from-amber-200 via-orange-700 to-stone-950",
   },
   {
-    id: 3,
+    tmdbId: "915935",
     title: "Anatomy of a Fall",
+    releaseDate: "2023-10-13",
     year: "2023",
     genres: ["Mystery", "Drama"],
+    posterPath: "/kQs6keheMwCxJxrzV83VUwFtHkB.jpg",
     palette: "from-red-200 via-zinc-700 to-black",
   },
   {
-    id: 4,
+    tmdbId: "976893",
     title: "Perfect Days",
+    releaseDate: "2023-12-22",
     year: "2023",
     genres: ["Drama", "Slice of Life"],
+    posterPath: "/4tHe7jYqGgx19HRkO7SGuZLylkW.jpg",
     palette: "from-yellow-100 via-green-700 to-zinc-950",
   },
 ];
 
 type MovieResult = (typeof fakeResults)[number];
 
-type SavedMovie = {
-  id: number;
-  movie: MovieResult;
-  rating: string;
-  review: string;
-  watchedDate: string;
-  tags: string[];
-};
-
 export default function AddMoviePage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [selectedMovie, setSelectedMovie] = useState<MovieResult>(fakeResults[0]);
   const [rating, setRating] = useState("4.5");
   const [review, setReview] = useState("");
   const [watchedDate, setWatchedDate] = useState("");
   const [tags, setTags] = useState("cinema, favorite");
-  const [savedMovies, setSavedMovies] = useState<SavedMovie[]>([]);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const searchResults = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -66,23 +69,42 @@ export default function AddMoviePage() {
     );
   }, [query]);
 
-  function handleSave(event: FormEvent<HTMLFormElement>) {
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setErrorMessage("");
+    setIsSaving(true);
 
-    const savedMovie: SavedMovie = {
-      id: Date.now(),
-      movie: selectedMovie,
-      rating,
-      review,
-      watchedDate,
-      tags: tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-    };
+    const parsedRating = Number(rating);
+    const tagList = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
 
-    setSavedMovies((movies) => [savedMovie, ...movies]);
-    setReview("");
+    if (Number.isNaN(parsedRating)) {
+      setErrorMessage("Rating must be a number.");
+      setIsSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.from("movie_logs").insert({
+      tmdb_id: selectedMovie.tmdbId,
+      title: selectedMovie.title,
+      poster_path: selectedMovie.posterPath,
+      release_date: selectedMovie.releaseDate,
+      genres: selectedMovie.genres,
+      watched_date: watchedDate || null,
+      my_rating: parsedRating,
+      my_review: review.trim() || null,
+      tags: tagList,
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      setIsSaving(false);
+      return;
+    }
+
+    router.push("/");
   }
 
   return (
@@ -131,11 +153,11 @@ export default function AddMoviePage() {
 
             <div className="mt-5 grid gap-3">
               {searchResults.map((movie) => {
-                const isSelected = selectedMovie.id === movie.id;
+                const isSelected = selectedMovie.tmdbId === movie.tmdbId;
 
                 return (
                   <button
-                    key={movie.id}
+                    key={movie.tmdbId}
                     type="button"
                     onClick={() => setSelectedMovie(movie)}
                     className={`grid grid-cols-[64px_1fr] items-center gap-4 rounded-[8px] border p-3 text-left transition ${
@@ -165,6 +187,12 @@ export default function AddMoviePage() {
             onSubmit={handleSave}
             className="rounded-[8px] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/30"
           >
+            {errorMessage ? (
+              <p className="mb-4 rounded-[8px] border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200">
+                {errorMessage}
+              </p>
+            ) : null}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium text-zinc-300">
                 Rating
@@ -218,62 +246,14 @@ export default function AddMoviePage() {
               </div>
               <button
                 type="submit"
-                className="inline-flex h-12 items-center justify-center rounded-full bg-[#00e054] px-6 text-sm font-semibold text-black shadow-[0_12px_32px_rgba(0,224,84,0.24)] transition hover:bg-[#20ff73] focus:outline-none focus:ring-2 focus:ring-[#00e054] focus:ring-offset-2 focus:ring-offset-black"
+                disabled={isSaving}
+                className="inline-flex h-12 items-center justify-center rounded-full bg-[#00e054] px-6 text-sm font-semibold text-black shadow-[0_12px_32px_rgba(0,224,84,0.24)] transition hover:bg-[#20ff73] focus:outline-none focus:ring-2 focus:ring-[#00e054] focus:ring-offset-2 focus:ring-offset-black disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-300 disabled:shadow-none"
               >
-                Save Movie
+                {isSaving ? "Saving..." : "Save Movie"}
               </button>
             </div>
           </form>
         </div>
-
-        <section className="rounded-[8px] border border-white/10 bg-white/[0.04] p-5">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-white">Saved locally</h2>
-            <p className="text-sm text-zinc-500">{savedMovies.length} records</p>
-          </div>
-
-          <div className="mt-5 grid gap-3">
-            {savedMovies.length === 0 ? (
-              <p className="rounded-[8px] border border-dashed border-white/10 px-4 py-5 text-sm text-zinc-500">
-                No local records yet.
-              </p>
-            ) : (
-              savedMovies.map((savedMovie) => (
-                <article
-                  key={savedMovie.id}
-                  className="grid gap-4 rounded-[8px] border border-white/10 bg-black/20 p-4 md:grid-cols-[1fr_auto]"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-semibold text-white">
-                      {savedMovie.movie.title}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-400">
-                      {savedMovie.review || "No review yet."}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {savedMovie.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full bg-white/10 px-3 py-1 text-xs text-zinc-300"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm md:flex-col md:items-end md:justify-center">
-                    <span className="font-semibold text-[#00e054]">
-                      {savedMovie.rating}
-                    </span>
-                    <span className="text-zinc-500">
-                      {savedMovie.watchedDate || "No date"}
-                    </span>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
       </div>
     </main>
   );
