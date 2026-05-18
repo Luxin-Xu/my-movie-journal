@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { MovieLogActions } from "./movie-log-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -194,6 +195,7 @@ export default async function MovieDetailPage({
                 </div>
               </div>
             </section>
+
           </div>
         </section>
       </div>
@@ -336,6 +338,18 @@ function DatabaseMovieDetail({ movie }: { movie: MovieLog }) {
                 </div>
               </div>
             </section>
+
+            <MovieLogActions
+              id={movie.id}
+              initialRating={
+                movie.my_rating === null || movie.my_rating === undefined
+                  ? ""
+                  : String(movie.my_rating)
+              }
+              initialWatchedDate={movie.watched_date ?? ""}
+              initialReview={movie.my_review ?? ""}
+              initialTags={tags}
+            />
           </div>
         </section>
       </div>
