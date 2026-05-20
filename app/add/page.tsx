@@ -133,6 +133,7 @@ export default function AddMoviePage() {
     const { error } = await supabase.from("movie_logs").insert({
       tmdb_id: selectedMovie.tmdbId,
       title: selectedMovie.title,
+      overview: selectedMovie.overview,
       poster_path: selectedMovie.posterPath,
       release_date: selectedMovie.releaseDate,
       genres: selectedMovie.genres,

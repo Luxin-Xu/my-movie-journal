@@ -9,6 +9,7 @@ type MovieLog = {
   id: string;
   tmdb_id: string | null;
   title: string;
+  overview: string | null;
   poster_path: string | null;
   release_date: string | null;
   genres: unknown;
@@ -211,7 +212,7 @@ async function getDatabaseMovie(id: string) {
   const { data, error } = await supabase
     .from("movie_logs")
     .select(
-      "id,tmdb_id,title,poster_path,release_date,genres,watched_date,my_rating,my_review,tags,created_at",
+      "id,tmdb_id,title,overview,poster_path,release_date,genres,watched_date,my_rating,my_review,tags,created_at",
     )
     .eq("id", id)
     .maybeSingle<MovieLog>();
@@ -284,8 +285,7 @@ function DatabaseMovieDetail({ movie }: { movie: MovieLog }) {
                 {movie.title}
               </h2>
               <p className="mt-5 max-w-3xl text-base leading-8 text-zinc-300">
-                This record is saved from your movie journal. Synopsis, cast, and
-                director can be filled in later when TMDb integration is connected.
+                {movie.overview || "No synopsis available yet."}
               </p>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

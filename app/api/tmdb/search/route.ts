@@ -131,7 +131,7 @@ async function fetchTmdb(url: URL): Promise<HttpTextResponse> {
     }
 
     console.error("Direct TMDb fetch failed, trying TMDB_PROXY_URL", error);
-    return fetchTextViaHttpProxy(url, new URL(proxyUrl));
+    return fetchTextViaProxy(url, new URL(proxyUrl));
   }
 }
 
@@ -155,6 +155,15 @@ async function fetchText(url: URL): Promise<HttpTextResponse> {
     };
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function fetchTextViaProxy(targetUrl: URL, proxyUrl: URL) {
+  try {
+    return await fetchTextViaHttpProxy(targetUrl, proxyUrl);
+  } catch (error) {
+    console.error("HTTP proxy request failed, trying SOCKS5 proxy", error);
+    return fetchTextViaSocksProxy(targetUrl, proxyUrl);
   }
 }
 
@@ -191,6 +200,65 @@ function fetchTextViaHttpProxy(
 
         const secureSocket = tls.connect({
           socket,
+          ALPNProtocols: ["http/1.1"],
+          servername: targetUrl.hostname,
+        });
+
+        return readTlsResponse(secureSocket, targetUrl);
+      })
+      .then((response) => {
+        clearTimeout(timeout);
+        resolve(response);
+      })
+      .catch((error) => {
+        clearTimeout(timeout);
+        socket.destroy();
+        reject(error);
+      });
+  });
+}
+
+function fetchTextViaSocksProxy(
+  targetUrl: URL,
+  proxyUrl: URL,
+): Promise<HttpTextResponse> {
+  return new Promise((resolve, reject) => {
+    const proxyPort = Number(proxyUrl.port || 1080);
+    const socket = net.connect(proxyPort, proxyUrl.hostname);
+    const timeout = setTimeout(() => {
+      socket.destroy();
+      reject(new Error("TMDb SOCKS proxy connection timed out."));
+    }, 10000);
+
+    socket.once("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+
+    socket.once("connect", () => {
+      socket.write(Buffer.from([0x05, 0x01, 0x00]));
+    });
+
+    readExactly(socket, 2)
+      .then((methodResponse) => {
+        if (methodResponse[0] !== 0x05 || methodResponse[1] !== 0x00) {
+          throw new Error("SOCKS5 proxy does not allow no-auth connections.");
+        }
+
+        const hostname = Buffer.from(targetUrl.hostname);
+        const request = Buffer.concat([
+          Buffer.from([0x05, 0x01, 0x00, 0x03, hostname.length]),
+          hostname,
+          Buffer.from([0x01, 0xbb]),
+        ]);
+        socket.write(request);
+
+        return readSocksConnectResponse(socket);
+      })
+      .then(() => {
+        const secureSocket = tls.connect({
+          socket,
+          ALPNProtocols: ["http/1.1"],
           servername: targetUrl.hostname,
         });
 
@@ -231,6 +299,67 @@ function readUntilHeaders(socket: net.Socket): Promise<Buffer> {
     socket.on("data", onData);
     socket.once("error", onError);
   });
+}
+
+function readExactly(socket: net.Socket, byteCount: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let totalLength = 0;
+
+    function onData(chunk: Buffer) {
+      chunks.push(chunk);
+      totalLength += chunk.length;
+
+      if (totalLength >= byteCount) {
+        socket.off("data", onData);
+        socket.off("error", onError);
+        const buffer = Buffer.concat(chunks);
+        const extra = buffer.subarray(byteCount);
+
+        if (extra.length > 0) {
+          socket.unshift(extra);
+        }
+
+        resolve(buffer.subarray(0, byteCount));
+      }
+    }
+
+    function onError(error: Error) {
+      socket.off("data", onData);
+      reject(error);
+    }
+
+    socket.on("data", onData);
+    socket.once("error", onError);
+  });
+}
+
+async function readSocksConnectResponse(socket: net.Socket) {
+  const header = await readExactly(socket, 4);
+
+  if (header[0] !== 0x05 || header[1] !== 0x00) {
+    throw new Error(`SOCKS5 proxy connect failed with code ${header[1]}.`);
+  }
+
+  const addressType = header[3];
+
+  if (addressType === 0x01) {
+    await readExactly(socket, 4 + 2);
+    return;
+  }
+
+  if (addressType === 0x03) {
+    const length = (await readExactly(socket, 1))[0];
+    await readExactly(socket, length + 2);
+    return;
+  }
+
+  if (addressType === 0x04) {
+    await readExactly(socket, 16 + 2);
+    return;
+  }
+
+  throw new Error(`Unsupported SOCKS5 address type ${addressType}.`);
 }
 
 function readTlsResponse(
