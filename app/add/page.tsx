@@ -21,6 +21,9 @@ type SearchResponse = {
 
 export default function AddMoviePage() {
   const router = useRouter();
+  const [authStatus, setAuthStatus] = useState<
+    "checking" | "authenticated" | "unauthenticated"
+  >("checking");
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<MovieResult[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<MovieResult | null>(null);
@@ -34,9 +37,42 @@ export default function AddMoviePage() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) {
+        return;
+      }
+
+      if (data.session) {
+        setAuthStatus("authenticated");
+      } else {
+        setAuthStatus("unauthenticated");
+        router.replace("/login?next=/add");
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setAuthStatus("authenticated");
+      } else {
+        setAuthStatus("unauthenticated");
+        router.replace("/login?next=/add");
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  useEffect(() => {
     const normalizedQuery = query.trim();
 
-    if (!normalizedQuery) {
+    if (!normalizedQuery || authStatus !== "authenticated") {
       return;
     }
 
@@ -94,7 +130,7 @@ export default function AddMoviePage() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [query]);
+  }, [authStatus, query]);
 
   function handleQueryChange(value: string) {
     setQuery(value);
@@ -110,6 +146,12 @@ export default function AddMoviePage() {
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
+
+    if (authStatus !== "authenticated") {
+      setErrorMessage("Please sign in before adding a movie.");
+      router.replace("/login?next=/add");
+      return;
+    }
 
     if (!selectedMovie) {
       setErrorMessage("Please search and select a movie first.");
@@ -150,6 +192,26 @@ export default function AddMoviePage() {
     }
 
     router.push("/");
+  }
+
+  if (authStatus === "checking") {
+    return (
+      <AccessState
+        title="Checking access"
+        message="Confirming your session before opening the editor."
+      />
+    );
+  }
+
+  if (authStatus === "unauthenticated") {
+    return (
+      <AccessState
+        title="Sign in required"
+        message="Only the site owner can add movie records."
+        actionHref="/login?next=/add"
+        actionLabel="Sign in"
+      />
+    );
   }
 
   return (
@@ -323,6 +385,51 @@ export default function AddMoviePage() {
             </div>
           </form>
         </div>
+      </div>
+    </main>
+  );
+}
+
+function AccessState({
+  title,
+  message,
+  actionHref,
+  actionLabel,
+}: {
+  title: string;
+  message: string;
+  actionHref?: string;
+  actionLabel?: string;
+}) {
+  return (
+    <main className="min-h-screen bg-[#050607] text-zinc-100">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-5 py-6 sm:px-8 lg:px-10">
+        <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+          <Link href="/" className="group inline-flex items-center gap-3">
+            <span className="h-3 w-3 rounded-full bg-[#00e054] shadow-[0_0_22px_rgba(0,224,84,0.8)] transition group-hover:scale-110" />
+            <span className="text-xl font-semibold tracking-normal text-white sm:text-2xl">
+              My Movie Journal
+            </span>
+          </Link>
+        </header>
+
+        <section className="rounded-[8px] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30">
+          <p className="text-sm font-medium uppercase tracking-[0.28em] text-[#40bcf4]">
+            Private access
+          </p>
+          <h1 className="mt-4 text-4xl font-semibold leading-tight text-white">
+            {title}
+          </h1>
+          <p className="mt-4 text-base leading-8 text-zinc-400">{message}</p>
+          {actionHref && actionLabel ? (
+            <Link
+              href={actionHref}
+              className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#00e054] px-5 text-sm font-semibold text-black transition hover:bg-[#20ff73]"
+            >
+              {actionLabel}
+            </Link>
+          ) : null}
+        </section>
       </div>
     </main>
   );

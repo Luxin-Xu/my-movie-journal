@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 type MovieLogActionsProps = {
@@ -20,6 +20,8 @@ export function MovieLogActions({
   initialTags,
 }: MovieLogActionsProps) {
   const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [rating, setRating] = useState(initialRating);
   const [watchedDate, setWatchedDate] = useState(initialWatchedDate);
   const [review, setReview] = useState(initialReview);
@@ -29,10 +31,41 @@ export function MovieLogActions({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setIsAuthenticated(Boolean(data.session));
+      setIsCheckingAuth(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session));
+      setIsCheckingAuth(false);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   async function handleUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setErrorMessage("");
+
+    if (!isAuthenticated) {
+      setErrorMessage("Please sign in before editing this movie log.");
+      return;
+    }
+
     setIsSaving(true);
 
     const parsedRating = Number(rating);
@@ -81,6 +114,12 @@ export function MovieLogActions({
 
     setMessage("");
     setErrorMessage("");
+
+    if (!isAuthenticated) {
+      setErrorMessage("Please sign in before deleting this movie log.");
+      return;
+    }
+
     setIsDeleting(true);
 
     const { data, error } = await supabase
@@ -104,6 +143,10 @@ export function MovieLogActions({
 
     router.push("/movies");
     router.refresh();
+  }
+
+  if (isCheckingAuth || !isAuthenticated) {
+    return null;
   }
 
   return (
