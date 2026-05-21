@@ -43,7 +43,7 @@ export function MovieLogActions({
       return;
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("movie_logs")
       .update({
         my_rating: rating.trim() ? parsedRating : null,
@@ -51,10 +51,18 @@ export function MovieLogActions({
         my_review: review.trim() || null,
         tags: parseTags(tags),
       })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id,my_rating,watched_date,my_review,tags")
+      .maybeSingle();
 
     if (error) {
       setErrorMessage(error.message);
+      setIsSaving(false);
+      return;
+    }
+
+    if (!data) {
+      setErrorMessage("No movie log was updated. Please check your permissions.");
       setIsSaving(false);
       return;
     }
@@ -75,7 +83,12 @@ export function MovieLogActions({
     setErrorMessage("");
     setIsDeleting(true);
 
-    const { error } = await supabase.from("movie_logs").delete().eq("id", id);
+    const { data, error } = await supabase
+      .from("movie_logs")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       setErrorMessage(error.message);
@@ -83,7 +96,14 @@ export function MovieLogActions({
       return;
     }
 
+    if (!data) {
+      setErrorMessage("No movie log was deleted. Please check your permissions.");
+      setIsDeleting(false);
+      return;
+    }
+
     router.push("/movies");
+    router.refresh();
   }
 
   return (

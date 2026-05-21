@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase/client";
 
 export const dynamic = "force-dynamic";
 
+type SortKey = "recent" | "watched" | "rating";
+
 type MovieLog = {
   id: string;
   title: string;
@@ -10,13 +12,35 @@ type MovieLog = {
   watched_date: string | null;
   my_rating: number | string | null;
   tags: unknown;
+  created_at: string | null;
 };
 
-export default async function MoviesPage() {
-  const { data: movies, error } = await supabase
+const sortOptions: { key: SortKey; label: string }[] = [
+  { key: "recent", label: "Recently added" },
+  { key: "watched", label: "Watched date" },
+  { key: "rating", label: "Rating high to low" },
+];
+
+export default async function MoviesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string }>;
+}) {
+  const params = await searchParams;
+  const activeSort = parseSort(params.sort);
+  const query = supabase
     .from("movie_logs")
-    .select("id,title,poster_path,watched_date,my_rating,tags")
-    .order("watched_date", { ascending: false, nullsFirst: false });
+    .select("id,title,poster_path,watched_date,my_rating,tags,created_at");
+
+  if (activeSort === "watched") {
+    query.order("watched_date", { ascending: false, nullsFirst: false });
+  } else if (activeSort === "rating") {
+    query.order("my_rating", { ascending: false, nullsFirst: false });
+  } else {
+    query.order("created_at", { ascending: false, nullsFirst: false });
+  }
+
+  const { data: movies, error } = await query;
 
   return (
     <main className="min-h-screen bg-[#050607] text-zinc-100">
@@ -43,13 +67,34 @@ export default async function MoviesPage() {
               All movies
             </p>
             <h1 className="text-4xl font-semibold leading-tight text-white sm:text-6xl">
-              Every film in the journal, sorted by watch date.
+              Every film in the journal, arranged your way.
             </h1>
           </div>
-          <p className="text-sm text-zinc-500">
-            {movies?.length ?? 0} records
-          </p>
+          <p className="text-sm text-zinc-500">{movies?.length ?? 0} records</p>
         </section>
+
+        <nav
+          aria-label="Movie sort options"
+          className="flex flex-wrap gap-2 rounded-[8px] border border-white/10 bg-white/[0.04] p-2"
+        >
+          {sortOptions.map((option) => {
+            const isActive = activeSort === option.key;
+
+            return (
+              <Link
+                key={option.key}
+                href={`/movies?sort=${option.key}`}
+                className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-semibold transition ${
+                  isActive
+                    ? "bg-[#00e054] text-black"
+                    : "text-zinc-300 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                {option.label}
+              </Link>
+            );
+          })}
+        </nav>
 
         {error ? (
           <p className="rounded-[8px] border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200">
@@ -129,6 +174,14 @@ export default async function MoviesPage() {
       </div>
     </main>
   );
+}
+
+function parseSort(sort: string | undefined): SortKey {
+  if (sort === "watched" || sort === "rating") {
+    return sort;
+  }
+
+  return "recent";
 }
 
 function getPosterUrl(posterPath: string) {
