@@ -27,10 +27,10 @@ export default function AddMoviePage() {
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<MovieResult[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<MovieResult | null>(null);
-  const [rating, setRating] = useState("4.5");
+  const [rating, setRating] = useState("");
   const [review, setReview] = useState("");
   const [watchedDate, setWatchedDate] = useState("");
-  const [tags, setTags] = useState("cinema, favorite");
+  const [tags, setTags] = useState("cinema");
   const [errorMessage, setErrorMessage] = useState("");
   const [searchError, setSearchError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -221,7 +221,7 @@ export default function AddMoviePage() {
           <Link href="/" className="group inline-flex items-center gap-3">
             <span className="h-3 w-3 rounded-full bg-[#00e054] shadow-[0_0_22px_rgba(0,224,84,0.8)] transition group-hover:scale-110" />
             <span className="text-xl font-semibold tracking-normal text-white sm:text-2xl">
-              My Movie Journal
+              PITATEE&apos;s Movie Journal
             </span>
           </Link>
 
@@ -339,9 +339,11 @@ export default function AddMoviePage() {
               <label className="text-sm font-medium text-zinc-300">
                 Watched date
                 <input
-                  type="date"
+                  type="text"
                   value={watchedDate}
                   onChange={(event) => setWatchedDate(event.target.value)}
+                  inputMode="numeric"
+                  placeholder="yyyy-mm-dd"
                   className="mt-3 h-12 w-full rounded-[8px] border border-white/10 bg-black/30 px-4 text-base text-white outline-none transition focus:border-[#00e054] focus:ring-2 focus:ring-[#00e054]/20"
                 />
               </label>
@@ -408,7 +410,7 @@ function AccessState({
           <Link href="/" className="group inline-flex items-center gap-3">
             <span className="h-3 w-3 rounded-full bg-[#00e054] shadow-[0_0_22px_rgba(0,224,84,0.8)] transition group-hover:scale-110" />
             <span className="text-xl font-semibold tracking-normal text-white sm:text-2xl">
-              My Movie Journal
+              PITATEE&apos;s Movie Journal
             </span>
           </Link>
         </header>

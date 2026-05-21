@@ -198,9 +198,11 @@ export function MovieLogActions({
           <label className="text-sm font-medium text-zinc-300">
             Watched date
             <input
-              type="date"
+              type="text"
               value={watchedDate}
               onChange={(event) => setWatchedDate(event.target.value)}
+              inputMode="numeric"
+              placeholder="yyyy-mm-dd"
               className="mt-3 h-12 w-full rounded-[8px] border border-white/10 bg-black/30 px-4 text-base text-white outline-none transition focus:border-[#00e054] focus:ring-2 focus:ring-[#00e054]/20"
             />
           </label>

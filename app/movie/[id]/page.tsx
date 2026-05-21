@@ -106,7 +106,7 @@ export default async function MovieDetailPage({
           <Link href="/" className="group inline-flex items-center gap-3">
             <span className="h-3 w-3 rounded-full bg-[#00e054] shadow-[0_0_22px_rgba(0,224,84,0.8)] transition group-hover:scale-110" />
             <span className="text-xl font-semibold tracking-normal text-white sm:text-2xl">
-              My Movie Journal
+              PITATEE&apos;s Movie Journal
             </span>
           </Link>
 
@@ -235,7 +235,7 @@ function DatabaseMovieDetail({ movie }: { movie: MovieLog }) {
           <Link href="/" className="group inline-flex items-center gap-3">
             <span className="h-3 w-3 rounded-full bg-[#00e054] shadow-[0_0_22px_rgba(0,224,84,0.8)] transition group-hover:scale-110" />
             <span className="text-xl font-semibold tracking-normal text-white sm:text-2xl">
-              My Movie Journal
+              PITATEE&apos;s Movie Journal
             </span>
           </Link>
 

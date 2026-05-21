@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "My Movie Journal",
+  title: "PITATEE's Movie Journal",
   description: "A private movie journal for recent watches, ratings, and posters.",
 };
 
